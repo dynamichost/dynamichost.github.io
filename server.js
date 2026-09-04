@@ -4,8 +4,8 @@ const path = require("path");
 const net = require("net");
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
-const API_KEY = process.env.API_KEY || "change-this-api-key";
+const PORT = Number(process.env.PORT || 3003);
+const API_KEY = process.env.API_KEY || "rhkg38yw4w4rhjg83m4y7x9gw";
 
 const ROOT = __dirname;
 const IP_FILE = path.join(ROOT, "iplist.json");
