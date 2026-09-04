@@ -1,2 +1,2 @@
-// Set this to the deployed Cloudflare Worker URL.
+// Cloudflare Worker API endpoint
 window.API_BASE = "https://github-ip-gateway.fhmunna.workers.dev";
