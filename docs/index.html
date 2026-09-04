@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IP Gateway</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>IP Gateway</h1>
+    <p>GitHub Pages + Cloudflare Worker + GitHub JSON storage</p>
+  </header>
+
+  <section class="card">
+    <h2>Admin authentication</h2>
+    <div class="row">
+      <input id="adminKey" type="password" placeholder="Admin key">
+      <button onclick="saveKey()">Save key</button>
+    </div>
+    <small>The admin key is kept in this browser tab only.</small>
+  </section>
+
+  <div id="status"></div>
+
+  <section class="card">
+    <div class="section-title">
+      <h2>IP list</h2>
+      <button onclick="load()">Refresh</button>
+    </div>
+
+    <form id="ipForm">
+      <input id="ip" placeholder="IPv4 or IPv6 address" required>
+      <button>Add IP</button>
+    </form>
+
+    <table>
+      <thead><tr><th>IP</th><th></th></tr></thead>
+      <tbody id="ipRows"></tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <h2>IP + port list</h2>
+    </div>
+
+    <form id="entryForm">
+      <input id="entryIp" placeholder="IPv4 or IPv6 address" required>
+      <input id="port" type="number" min="1" max="65535" placeholder="Port" required>
+      <button>Add entry</button>
+    </form>
+
+    <table>
+      <thead><tr><th>IP</th><th>Port</th><th></th></tr></thead>
+      <tbody id="entryRows"></tbody>
+    </table>
+  </section>
+</main>
+
+<script src="./config.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

@@ -1,87 +1,159 @@
-# IP API Gateway
+# GitHub-Based IP Gateway
 
-Simple Node.js/Express API gateway backed by two JSON files.
+A GitHub Pages frontend backed by a Cloudflare Worker. The Worker keeps the GitHub token secret and uses the GitHub Contents API to read/write:
 
-## Requirements
+- `data/iplist.json`
+- `data/iplist_with_port.json`
 
-- Node.js 18+ recommended
-- npm
+## Architecture
 
-## Install
+Browser -> GitHub Pages -> Cloudflare Worker -> GitHub API -> JSON files in repository
 
-```bash
-cd ip-api-gateway
-npm install
-```
+The browser never receives the GitHub token.
 
-## Configure API key
+## 1. Create the repository
 
-The write endpoints require `X-API-Key`.
+Create a GitHub repository and put this project in it.
 
-For a temporary shell session:
+The Pages site uses the `/docs` directory.
 
-```bash
-export API_KEY='replace-with-a-long-random-secret'
-export PORT=3000
-npm start
-```
-
-If `API_KEY` is not set, the server uses `change-this-api-key`; change it before exposing the service.
-
-## Web UI
-
-Open:
+Create these repository files:
 
 ```text
-http://SERVER_IP:3000/
+data/iplist.json
+data/iplist_with_port.json
 ```
 
-Enter the same API key in the web UI.
+Example `data/iplist.json`:
 
-## Read API
+```json
+[
+  "192.0.2.10"
+]
+```
+
+Example `data/iplist_with_port.json`:
+
+```json
+[
+  {
+    "ip": "192.0.2.10",
+    "port": 443
+  }
+]
+```
+
+## 2. GitHub Pages
+
+In GitHub:
+
+Settings -> Pages -> Deploy from a branch
+
+Select your default branch and `/docs`.
+
+The frontend is then available at:
+
+```text
+https://USERNAME.github.io/REPOSITORY/
+```
+
+## 3. GitHub token
+
+Create a fine-grained GitHub token for the repository.
+
+The token should have the minimum repository permission needed to update repository contents.
+
+Do NOT put this token in `docs/app.js`, HTML, or any browser-side JavaScript.
+
+## 4. Cloudflare Worker
+
+The Worker in `worker/worker.js` expects:
+
+- `GITHUB_OWNER`
+- `GITHUB_REPO`
+- `GITHUB_BRANCH`
+- `GITHUB_TOKEN`
+- `ADMIN_KEY`
+
+Set them as Worker environment variables/secrets.
+
+Example with Wrangler:
 
 ```bash
-curl http://127.0.0.1:3000/api/ips
-curl http://127.0.0.1:3000/api/ips-with-port
+cd worker
+npm install
+npx wrangler secret put GITHUB_TOKEN
+npx wrangler secret put ADMIN_KEY
 ```
 
-## Add IP
+Put repository owner/name/branch in `wrangler.toml`.
+
+Then deploy:
 
 ```bash
-curl -X POST http://127.0.0.1:3000/api/ips \
-  -H 'Content-Type: application/json' \
-  -H 'X-API-Key: replace-with-a-long-random-secret' \
-  -d '{"ip":"192.0.2.10"}'
+npx wrangler deploy
 ```
 
-## Remove IP
+## 5. Connect Pages to the Worker
 
-```bash
-curl -X DELETE http://127.0.0.1:3000/api/ips/192.0.2.10 \
-  -H 'X-API-Key: replace-with-a-long-random-secret'
+Edit:
+
+```text
+docs/config.js
 ```
 
-## Add IP + port
+and set:
 
-```bash
-curl -X POST http://127.0.0.1:3000/api/ips-with-port \
-  -H 'Content-Type: application/json' \
-  -H 'X-API-Key: replace-with-a-long-random-secret' \
-  -d '{"ip":"192.0.2.10","port":443}'
+```js
+window.API_BASE = "https://YOUR-WORKER.workers.dev";
 ```
 
-## Remove IP + port
+Commit and push.
 
-```bash
-curl -X DELETE http://127.0.0.1:3000/api/ips-with-port/192.0.2.10/443 \
-  -H 'X-API-Key: replace-with-a-long-random-secret'
+## API
+
+### Public reads
+
+```text
+GET /api/ips
+GET /api/ips-with-port
+GET /api/health
 ```
 
-## Notes
+### Protected writes
 
-- Changes are written atomically to the JSON files.
-- Duplicate entries are rejected.
-- IP addresses are validated with Node's `net.isIP()`.
-- Ports must be integers from 1 to 65535.
-- The read endpoints are intentionally public. The write endpoints require the API key.
-- For Internet exposure, put this service behind Nginx/HTTPS and use a strong API key.
+Send:
+
+```text
+X-Admin-Key: YOUR_ADMIN_KEY
+```
+
+Endpoints:
+
+```text
+POST   /api/ips
+DELETE /api/ips/:ip
+
+POST   /api/ips-with-port
+DELETE /api/ips-with-port/:ip/:port
+```
+
+## Important behavior
+
+Writes create a Git commit in the GitHub repository. Therefore this is not a low-latency database. It is suitable for a relatively small list where changes are occasional.
+
+For high-frequency updates, use a database such as Cloudflare D1 instead.
+
+## CORS
+
+The Worker allows browser requests from the configured Pages origin. Update `ALLOWED_ORIGIN` in `wrangler.toml` to your actual GitHub Pages URL.
+
+For a custom domain, update it accordingly.
+
+## Security
+
+- Never expose `GITHUB_TOKEN` to the browser.
+- Use a strong random `ADMIN_KEY`.
+- Keep the repository private if the IP lists should not be public.
+- If the repository is public, the JSON files and their Git history are public.
+- GitHub commits remain in repository history, so deleting an entry from the JSON file does not erase it from Git history.
